@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../constants.dart';
+import '../models/user.dart';
+import '../services/local_storage_service.dart';
 import '../screens/newsfeed_screen.dart';
 import '../screens/notification_screen.dart';
-import '../screens/profile_screen.dart'; //
+import '../screens/profile_screen.dart';
 import '../widgets/custom_font.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,20 +19,48 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
 
-  final List<String> _titles = ["", "Notifications", "Achiles"];
+  final List<String> _titles = ["", "Notifications", "Profile"];
+
+  User? _currentUser;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await LocalStorageService.getSession();
+    if (!mounted) return;
+    setState(() {
+      _currentUser = user;
+      _loading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_currentUser == null) {
+      // Session got cleared somehow — bounce back to login.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, '/login');
+      });
+      return const Scaffold(body: SizedBox.shrink());
+    }
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: FB_PRIMARY,
-        shadowColor: FB_TEXT_COLOR_WHITE,
-        elevation: 2,
         title: Row(
           children: [
             Image.asset(
               'assets/images/marahuyo.png',
               height: ScreenUtil().setHeight(30),
+              errorBuilder: (_, __, ___) => const Icon(Icons.people_alt),
             ),
             const SizedBox(width: 10),
             CustomFont(
@@ -44,10 +74,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: PageView(
         controller: _pageController,
-        children: const <Widget>[
-          NewsFeedScreen(),
-          NotificationScreen(),
-          ProfileScreen(),
+        children: <Widget>[
+          NewsFeedScreen(currentUser: _currentUser!),
+          const NotificationScreen(),
+          ProfileScreen(currentUser: _currentUser!),
         ],
         onPageChanged: (page) {
           setState(() {
@@ -56,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: FB_SECONDARY,
         showSelectedLabels: false,
         showUnselectedLabels: false,
         onTap: _onTappedBar,
@@ -66,9 +95,8 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.notifications),
             label: 'Notifications',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Achiles'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
-        selectedItemColor: FB_DARK_PRIMARY,
         currentIndex: _selectedIndex,
       ),
     );

@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 
+import 'constants.dart';
+import 'provider/theme_provider.dart';
+import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/newsfeed_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 
 void main() {
-  runApp(const PagaoaFacebook());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const PagaoaFacebook(),
+    ),
+  );
 }
 
 class PagaoaFacebook extends StatelessWidget {
@@ -15,6 +23,8 @@ class PagaoaFacebook extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return ScreenUtilInit(
       designSize: const Size(412, 715),
       minTextAdapt: true,
@@ -23,15 +33,17 @@ class PagaoaFacebook extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Facebook Replication',
-          color: Colors.white,
+          theme: lightTheme,
+          darkTheme: darkTheme,
+          themeMode: themeProvider.themeMode,
 
-          initialRoute: '/login',
+          initialRoute: '/splash',
 
           routes: {
+            '/splash': (context) => const SplashScreen(),
             '/login': (context) => const LogInScreen(),
             '/register': (context) => const RegisterScreen(),
             '/home': (context) => const HomeScreen(),
-            '/newsfeed': (context) => const NewsFeedScreen(),
           },
         );
       },

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants.dart';
+import '../services/user_service.dart';
 import '../widgets/custom_font.dart';
 import '../widgets/custom_inkwell_button.dart';
 import '../widgets/custom_textformfield.dart';
@@ -17,10 +17,11 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   TextEditingController firstnameController = TextEditingController();
   TextEditingController lastnameController = TextEditingController();
-  TextEditingController mobilenumController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
   TextEditingController usernameController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController confirmpasswordController = TextEditingController();
@@ -33,20 +34,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
+    setState(() => _isLoading = true);
 
-    await prefs.setString('firstName', firstnameController.text);
-    await prefs.setString('lastName', lastnameController.text);
-    await prefs.setString('username', usernameController.text);
-    await prefs.setString('password', passwordController.text);
-
-    CustomDialogs.showSuccessDialog(
-      context,
-      'Registration successful',
-      onPressed: () {
-        Navigator.popAndPushNamed(context, '/login');
-      },
+    // dummyjson.com/docs/users#users-add — simulated, not persisted server
+    // side, but keeps registration flowing through the documented API.
+    final result = await UserService.addUser(
+      firstName: firstnameController.text.trim(),
+      lastName: lastnameController.text.trim(),
+      username: usernameController.text.trim(),
+      email: emailController.text.trim(),
+      password: passwordController.text,
     );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (result.user != null) {
+      CustomDialogs.showSuccessDialog(
+        context,
+        'Registration successful! You can now log in with an existing '
+        'dummyjson.com account (e.g. "emilys" / "emilyspass") since new '
+        'accounts are simulated only, not stored on the server.',
+        onPressed: () {
+          Navigator.popAndPushNamed(context, '/login');
+        },
+      );
+    } else {
+      CustomDialogs.showErrorDialog(
+        context,
+        result.error ?? 'Registration failed',
+      );
+    }
   }
 
   @override
@@ -66,10 +84,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    SizedBox(width: 40),
+                    const SizedBox(width: 40),
                     CustomFont(
                       text: "Register Here",
-                      fontSize: ScreenUtil().setSp(36),
+                      fontSize: ScreenUtil().setSp(30),
                       fontWeight: FontWeight.bold,
                       color: FB_DARK_PRIMARY,
                     ),
@@ -109,6 +127,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 SizedBox(height: ScreenUtil().setHeight(10)),
 
                 CustomTextFormField(
+                  controller: emailController,
+                  hintText: 'Email',
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (v) => v!.isEmpty ? 'Email required' : null,
+                  fontSize: ScreenUtil().setSp(15),
+                  hintTextSize: ScreenUtil().setSp(15),
+                ),
+
+                SizedBox(height: ScreenUtil().setHeight(10)),
+
+                CustomTextFormField(
                   controller: usernameController,
                   hintText: 'Username',
                   validator: (v) => v!.isEmpty ? 'Username required' : null,
@@ -141,13 +170,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 SizedBox(height: ScreenUtil().setHeight(25)),
 
-                CustomInkwellButton(
-                  onTap: register,
-                  height: ScreenUtil().setHeight(45),
-                  width: double.infinity,
-                  buttonName: "Submit",
-                  fontSize: ScreenUtil().setSp(15),
-                ),
+                _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: FB_DARK_PRIMARY,
+                        ),
+                      )
+                    : CustomInkwellButton(
+                        onTap: register,
+                        height: ScreenUtil().setHeight(45),
+                        width: double.infinity,
+                        buttonName: "Submit",
+                        fontSize: ScreenUtil().setSp(15),
+                      ),
               ],
             ),
           ),

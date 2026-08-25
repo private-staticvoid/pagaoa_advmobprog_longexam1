@@ -6,7 +6,7 @@ version: 0.1.0
 environment:
   sdk: ^3.10.1
 
-dependencies: 
+dependencies:
   cached_network_image: ^3.4.1
   carousel_slider: ^5.1.1
   flutter:
@@ -15,6 +15,8 @@ dependencies:
   flutter_screenutil: ^5.9.3
   intl: ^0.20.2
   shared_preferences: ^2.1.1
+  http: ^1.2.2
+  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:

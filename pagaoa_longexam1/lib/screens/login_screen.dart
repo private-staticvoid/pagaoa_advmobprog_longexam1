@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants.dart';
+import '../services/user_service.dart';
+import '../services/local_storage_service.dart';
 import '../widgets/custom_textformfield.dart';
 import '../widgets/custom_inkwell_button.dart';
 import '../widgets/custom_dialogs.dart';
@@ -19,22 +20,30 @@ class _LogInScreenState extends State<LogInScreen> {
   TextEditingController passwordController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final prefs = await SharedPreferences.getInstance();
+    setState(() => _isLoading = true);
 
-    final savedUsername = prefs.getString('username');
-    final savedPassword = prefs.getString('password');
+    final result = await UserService.login(
+      username: usernameController.text.trim(),
+      password: passwordController.text,
+    );
 
-    if (usernameController.text == savedUsername &&
-        passwordController.text == savedPassword) {
-      await prefs.setBool('isLoggedIn', true);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
+    if (result.user != null) {
+      await LocalStorageService.saveSession(result.user!);
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     } else {
-      CustomDialogs.showErrorDialog(context, 'Invalid username or password');
+      CustomDialogs.showErrorDialog(
+        context,
+        result.error ?? 'Invalid username or password',
+      );
     }
   }
 
@@ -65,9 +74,26 @@ class _LogInScreenState extends State<LogInScreen> {
                       Image.asset(
                         'assets/images/NUCCIT.png',
                         height: ScreenUtil().setHeight(200),
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.people_alt_rounded,
+                          size: ScreenUtil().setSp(100),
+                          color: FB_DARK_PRIMARY,
+                        ),
                       ),
 
-                      SizedBox(height: ScreenUtil().setHeight(30)),
+                      SizedBox(height: ScreenUtil().setHeight(10)),
+
+                      Text(
+                        'Sign in with your dummyjson.com account\n'
+                        '(e.g. username "emilys", password "emilyspass")',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: ScreenUtil().setSp(11),
+                          color: Colors.grey[600],
+                        ),
+                      ),
+
+                      SizedBox(height: ScreenUtil().setHeight(20)),
 
                       CustomTextFormField(
                         height: ScreenUtil().setHeight(10),
@@ -100,13 +126,17 @@ class _LogInScreenState extends State<LogInScreen> {
 
                       SizedBox(height: ScreenUtil().setHeight(50)),
 
-                      CustomInkwellButton(
-                        onTap: login,
-                        height: ScreenUtil().setHeight(40),
-                        width: ScreenUtil().screenWidth,
-                        buttonName: "Login",
-                        fontSize: ScreenUtil().setSp(15),
-                      ),
+                      _isLoading
+                          ? const CircularProgressIndicator(
+                              color: FB_DARK_PRIMARY,
+                            )
+                          : CustomInkwellButton(
+                              onTap: login,
+                              height: ScreenUtil().setHeight(40),
+                              width: ScreenUtil().screenWidth,
+                              buttonName: "Login",
+                              fontSize: ScreenUtil().setSp(15),
+                            ),
                     ],
                   ),
                 ),
